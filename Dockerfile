@@ -13,7 +13,7 @@ RUN apt-get update && \
 RUN npm install -g grunt-cli nodemon bower node-gyp
 
 # Define working directory
-RUN mkdir -p /judger
-WORKDIR /judger
+RUN mkdir -p /fetcher
+WORKDIR /fetcher
 
 CMD npm run dev

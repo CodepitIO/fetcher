@@ -12,13 +12,16 @@ const CronJob = require('cron').CronJob,
       url     = require('url'),
       _       = require('lodash')
 
-const Problem   = require('../models/problem'),
-      Errors    = require('../utils/errors'),
-      Utils     = require('../utils/util'),
+const Problem   = require('../../common/models/problem'),
+      Errors    = require('../../common/errors'),
+      Utils     = require('../../common/lib/utils'),
+      C         = require('../../common/constants'),
       S3        = require('./dbs').S3
 
-const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000
-const S3_QUEUE_CONCURRENCY = 10
+const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000;
+const IMPORT_QUEUE_CONCURRENCY = 50;
+const IMPORT_QUEUE_PER_OJ_CONCURRENCY = 10;
+const S3_QUEUE_CONCURRENCY = 30;
 
 const FETCH_PROBLEMS_CRON = '00 00 03 * * *';
 const FETCH_PROBLEMS_TZ = 'America/Recife';
@@ -88,7 +91,7 @@ module.exports = (() => {
   }, S3_QUEUE_CONCURRENCY);
 
   let uploadProblemToS3Queue = async.queue((problem, callback) => {
-    const OJConfig = require(`../adapters/${problem.oj}/config.js`);
+    const OJConfig = Utils.getOJConfig(problem.oj);
     if (problem.isPdf) {
       let url = OJConfig.url + OJConfig.getProblemPdfPath(problem.id)
       request({url: url, encoding: null}, (err, res, body) => {
@@ -134,79 +137,6 @@ module.exports = (() => {
       }, next);
     }, () => {
       return callback(null, hasImage, $.html());
-    });
-  }
-
-  function importProblem(problem, callback) {
-    let data = {};
-    let hasImage = false;
-    async.waterfall([
-      (next) => {
-        return ojs[problem.oj].import(problem, next);
-      },
-      (_data, next) => {
-        data = _data;
-        if (!data) return next(new Error("No data returned"));
-        if (data.isPdf) return next();
-        if (!data.html || data.html.length === 0) return next(new Error("Html is empty"));
-        // We wait at most 2 minutes to import an image
-        return async.timeout((callback) => {
-          return fetchImgSrcs(data.html, problem, callback);
-        }, 2 * 60 * 1000)(next);
-      },
-      (_hasImage, html, next) => {
-        hasImage = _hasImage;
-        data.html = html;
-        problem.fullName = problem.originalUrl = null
-        for (var key in data) {
-          problem[key] = data[key]
-        }
-        return uploadProblemToS3Queue.push(problem, next);
-      },
-    ], (err, details) => {
-      if (err) {
-        return importSaveFail(problem, callback)
-      }
-      count++
-      problem.importDate = new Date()
-      problem.imported = true
-      problem.url = Utils.getURIFromS3Metadata(details)
-      console.log(`${count}: Imported ${problem.id} from ${problem.oj} (${problem._id}). ${problem.url} ${hasImage}`)
-      problem.html = undefined
-      return problem.save(callback)
-    });
-  }
-
-  function shouldImport(problem) {
-    // For each problem not imported, we'll try to import it 10 times
-    if (!problem.imported && problem.importTries < 10) {
-      return true;
-    }
-    // Let's not import old problems, as we already did it many times.
-    // Problems created more than 3 months ago are considered old.
-    let daysSinceCreation = Math.round(
-      (new Date() - (problem.createdAt || 0)) / (24 * 60 * 60 * 1000));
-    if (daysSinceCreation > 90) {
-      return false;
-    }
-    // Then, we'll retry to import every 7 days, even for already imported problems
-    let daysSinceUpdate = Math.round(
-      (new Date() - (problem.updatedAt || 0)) / (24 * 60 * 60 * 1000));
-    return daysSinceUpdate >= 7;
-  }
-
-  function importProblemSet(problems, callback) {
-    let importers = _.chain(problems)
-      .filter((problem) => {
-        return shouldImport(problem)
-      })
-      .shuffle()
-      .map((problem) => {
-        return async.retryable(3, async.apply(importProblem, problem));
-      })
-      .value()
-    async.parallel(async.reflectAll(importers), () => {
-      return callback && callback()
     });
   }
 
@@ -282,6 +212,98 @@ module.exports = (() => {
     return callback && callback();
   }
 
+  function importProblem(problem, callback) {
+    let data = {};
+    let hasImage = false;
+    async.waterfall([
+      (next) => {
+        return ojs[problem.oj].import(problem, next);
+      },
+      (_data, next) => {
+        data = _data;
+        if (!data) return next(new Error("No data returned"));
+        if (data.isPdf) return next();
+        if (!data.html || data.html.length === 0) return next(new Error("Html is empty"));
+        // We wait at most 2 minutes to import an image
+        return async.timeout((callback) => {
+          return fetchImgSrcs(data.html, problem, callback);
+        }, 2 * 60 * 1000)(next);
+      },
+      (_hasImage, html, next) => {
+        hasImage = _hasImage;
+        data.html = html;
+        problem.fullName = problem.originalUrl = null
+        for (var key in data) {
+          problem[key] = data[key]
+        }
+        return uploadProblemToS3Queue.push(problem, next);
+      },
+    ], (err, details) => {
+      if (err) {
+        console.log(err);
+        return importSaveFail(problem, callback)
+      }
+      count++
+      problem.importDate = new Date()
+      problem.imported = true
+      problem.url = Utils.getURIFromS3Metadata(details)
+      console.log(`${count}: Imported ${problem.id} from ${problem.oj} (${problem._id}). ${problem.url} ${hasImage}`)
+      problem.html = undefined
+      return problem.save(callback)
+    });
+  }
+
+  let importProblemToQueue = async.queue((problem, callback) => {
+    // 2 minutes to import a problem at most
+    return async.timeout((done) => {
+      return importProblem(problem, done);
+    }, 2 * 60 * 1000)(callback);
+  }, IMPORT_QUEUE_CONCURRENCY);
+
+  let ojQueues = {}
+  function getPushImportProblemToOJQueue(oj) {
+    if (!ojQueues[oj]) {
+      ojQueues[oj] = async.queue(
+        importProblemToQueue.push,
+        Utils.getOJConfig(oj).maxImportWorkers || IMPORT_QUEUE_PER_OJ_CONCURRENCY
+      );
+    }
+    return ojQueues[oj].push;
+  }
+
+  function shouldImport(problem) {
+    // For each problem not imported, we'll try to import it 10 times
+    if (!problem.imported && problem.importTries < 10) {
+      return true;
+    }
+    // Let's not import old problems, as we already did it many times.
+    // Problems created more than 3 months ago are considered old.
+    let daysSinceCreation = Math.round(
+      (new Date() - (problem.createdAt || 0)) / (24 * 60 * 60 * 1000));
+    if (daysSinceCreation > 90) {
+      return false;
+    }
+    // Then, we'll retry to import every 7 days, even for already imported problems
+    let daysSinceUpdate = Math.round(
+      (new Date() - (problem.updatedAt || 0)) / (24 * 60 * 60 * 1000));
+    return daysSinceUpdate >= 7;
+  }
+
+  function importProblemSet(problems, callback) {
+    let importers = _.chain(problems)
+      .filter((problem) => {
+        return shouldImport(problem)
+      })
+      .shuffle()
+      .map((problem) => {
+        return async.retryable(3, async.apply(getPushImportProblemToOJQueue(problem.oj), problem));
+      })
+      .value()
+    async.parallel(async.reflectAll(importers), () => {
+      return callback && callback()
+    });
+  }
+
   function loadProblems(callback) {
     Problem.find((err, problems) => {
       allProblems = _.groupBy(problems, 'oj')
@@ -290,6 +312,13 @@ module.exports = (() => {
       })
       return callback && callback(null, problems)
     });
+  }
+
+  function importOJServices(callback) {
+    _.forEach(C.OJS, (oj) => {
+      ojs[oj] = require(`../adapters/${oj}/service`);
+    });
+    return callback();
   }
 
   function loadS3Objects(callback) {
@@ -314,9 +343,9 @@ module.exports = (() => {
     })
   }
 
-  this.start = (_ojs, callback) => {
-    ojs = _ojs;
+  this.start = (callback) => {
     async.waterfall([
+      importOJServices,
       loadProblems,
       importProblemSet,
       startDailyFetcher,

@@ -13,7 +13,7 @@ RUN mkdir -p /var/log/supervisor
 
 RUN npm install -g grunt-cli nodemon
 
-ENV WD judger
+ENV WD fetcher
 
 # Install node_modules and bower_components
 COPY package.json /tmp/package.json
