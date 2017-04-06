@@ -120,7 +120,7 @@ module.exports = (() => {
     const uri = ojConfig.url + ojConfig.getProblemPath(problem.id);
     let $ = cheerio.load(html);
     let hasImage = false;
-    async.eachSeries($('img'), (elem, next) => {
+    async.each($('img'), (elem, next) => {
       elem = $(elem);
       let link = elem.attr('src');
       if (!link || _.startsWith(link, 'formula?')) {
