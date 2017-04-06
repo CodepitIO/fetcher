@@ -222,7 +222,7 @@ module.exports = (() => {
       (_data, next) => {
         data = _data;
         if (!data) return next(new Error("No data returned"));
-        if (data.isPdf) return next();
+        if (data.isPdf) return next(null, false, null);
         if (!data.html || data.html.length === 0) return next(new Error("Html is empty"));
         // We wait at most 2 minutes to import an image
         return async.timeout((callback) => {
@@ -272,6 +272,10 @@ module.exports = (() => {
   }
 
   function shouldImport(problem) {
+    // stop importing problems for unsupported OJs
+    if (!ojs[problem.oj]) {
+      return false;
+    }
     // For each problem not imported, we'll try to import it 10 times
     if (!problem.imported && problem.importTries < 10) {
       return true;
