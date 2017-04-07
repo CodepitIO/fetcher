@@ -19,10 +19,12 @@
     "cheerio": "^0.20.0",
     "cron": "^1.1.0",
     "extend": "3.0.0",
+    "fs-extra": "^2.1.2",
     "iconv-lite": "^0.4.13",
     "lodash": "^4.13.1",
     "mime": "^1.3.4",
     "mongoose": "^4.5.4",
+    "pdf-text-extract": "^1.5.0",
     "request": "^2.73.0",
     "zombie": "git+https://git@github.com/godely/zombie.git"
   }

@@ -93,6 +93,10 @@ module.exports = (() => {
   let uploadProblemToS3Queue = async.queue((problem, callback) => {
     const OJConfig = Utils.getOJConfig(problem.oj);
     if (problem.isPdf) {
+      if (ojs[problem.oj].importPdf) {
+        // some ojs may have their own pdf import logic
+        return ojs[problem.oj].importPdf(problem, callback);
+      }
       let url = OJConfig.url + OJConfig.getProblemPdfPath(problem.id)
       request({url: url, encoding: null}, (err, res, body) => {
         if (err || res.headers['content-length'] < 200 || res.headers['content-type'] !== 'application/pdf') {
@@ -148,7 +152,6 @@ module.exports = (() => {
 
   function prettyFetchProblems(oj, callback) {
     oj.fetchProblems((err, fetched) => {
-      console.log(oj.type)
       if (!fetched) err = err || new Error()
       if (err) console.log(err)
       else console.log(fetched.length + ' problems')
@@ -232,7 +235,7 @@ module.exports = (() => {
       (_hasImage, html, next) => {
         hasImage = _hasImage;
         data.html = html;
-        problem.fullName = problem.originalUrl = null
+        problem.fullName = null
         for (var key in data) {
           problem[key] = data[key]
         }
@@ -240,8 +243,10 @@ module.exports = (() => {
       },
     ], (err, details) => {
       if (err) {
-        console.log(err);
-        return importSaveFail(problem, callback)
+        if (err !== Errors.NoNeedToImport) {
+          return importSaveFail(problem, callback)
+        }
+        return;
       }
       count++
       problem.importDate = new Date()
