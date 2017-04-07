@@ -152,6 +152,7 @@ module.exports = (() => {
 
   function prettyFetchProblems(oj, callback) {
     oj.fetchProblems((err, fetched) => {
+      console.log(oj.type)
       if (!fetched) err = err || new Error()
       if (err) console.log(err)
       else console.log(fetched.length + ' problems')
