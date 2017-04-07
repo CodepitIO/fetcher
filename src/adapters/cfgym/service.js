@@ -108,6 +108,7 @@ function getContestProblemsMetadata(contest, callback) {
           oj: TYPE,
           timelimit: parseFloat(tlml[1]),
           memorylimit: tlml[2] + ' MB',
+          source: contest.name,
         };
         if (!io.startsWith('standard')) {
           problem.inputFile = _.trim(_.split(io, '/')[0]);

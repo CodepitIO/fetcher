@@ -3,7 +3,6 @@
 const path    = require('path'),
       async   = require('async'),
       assert  = require('assert'),
-      Browser = require('zombie'),
       util    = require('util'),
       cheerio = require('cheerio'),
       _       = require('lodash');
