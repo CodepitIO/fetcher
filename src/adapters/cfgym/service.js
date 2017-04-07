@@ -69,7 +69,7 @@ function importHtml(problem, callback) {
 }
 
 let PdfImportQueue = async.queue((problem, callback) => {
-  return GymPdfImporter(problem, callback);
+  return new GymPdfImporter().importProblemset(problem, callback);
 }, 1);
 
 exports.importPdf = PdfImportQueue.push;

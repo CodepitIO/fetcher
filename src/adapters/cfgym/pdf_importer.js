@@ -12,9 +12,8 @@ const Utils = require('../../../common/lib/utils');
 
 let triedUrls = {};
 
-module.exports = function(problem, callback) {
-  let upperOffset;
-  let allMetadata;
+module.exports = function() {
+  let allMetadata, hasFooter;
 
   function getPDFTextWithHeight(file, k) {
     try {
@@ -47,41 +46,45 @@ module.exports = function(problem, callback) {
           i = k;
         }
       }
-      return Math.ceil((i+1) * 0.75);
+      return Math.ceil((i+1) * 1.25);
     } catch (err) {
       return 0;
     }
   }
 
-  function getHeaderOffset(file) {
-    try {
-      let i = 0, j = 256;
-      while (i < j) {
-        let k = Math.ceil((i + j) / 2);
-        let metadata = hasMetadata(getPDFTextWithHeight(file, k));
-        if (metadata && metadata.length === allMetadata.length) {
-          j = k - 1;
-        } else {
-          i = k;
-        }
-      }
-      return Math.ceil((i+1) * 0.75);
-    } catch (err) {
-      console.log(err);
-      return 0;
-    }
+  function cropUntil(pdf, checkFunction, callback) {
+    async.during(
+      (next) => {
+        return checkFunction(next);
+      },
+      (next) => {
+        console.log(`Trying to cut ${pdf} 8pt more.`);
+        exec(`pdfcrop --margins '0 -8 0 0' ${pdf} ${pdf}`, next);
+      },
+      callback
+    );
   }
 
-  function cropProblemPage(folder, data, i, callback) {
+  function cropProblemUpperHeader(folder, data, upperOffset, bottomOffset, i, callback) {
     let page = data.startPage + i;
-    return exec(`pdfcrop --margins '0 -${upperOffset} 0 -18' ${folder}/${page}.pdf ${folder}/${page}.pdf`, callback);
+    return exec(`pdfcrop --margins '0 -${upperOffset} 0 -${bottomOffset}' ${folder}/${page}.pdf ${folder}/${page}.pdf`, callback);
   }
 
   function generateProblemPDF(folder, data, idx, callback) {
     let problemPageCount = data.endPage - data.startPage + 1;
+
     async.series([
       (next) => {
-        async.timesSeries(problemPageCount, cropProblemPage.bind(null,folder,data), next);
+        let bottomOffset = 0;
+        if (hasFooter) {
+          bottomOffset = 18;
+        }
+        async.timesSeries(problemPageCount, cropProblemUpperHeader.bind(null, folder, data, 0, bottomOffset), next);
+      },
+      (next) => {
+        upperOffset = getUpperOffset(`${folder}/${data.startPage}.pdf`);
+        console.log('Using upper offset ' + upperOffset);
+        async.timesSeries(problemPageCount, cropProblemUpperHeader.bind(null, folder, data, upperOffset, 0), next);
       },
       (next) => {
         let pdfs = '';
@@ -94,21 +97,8 @@ module.exports = function(problem, callback) {
         exec(`pdfcrop ${folder}/p${idx}.pdf ${folder}/p${idx}.pdf`, next);
       },
       (next) => {
-        let headerOffset = getHeaderOffset(`${folder}/p${idx}.pdf`);
-        console.log(`Header offset for ${idx} = ${headerOffset}`);
-        exec(`pdfcrop --margins '0 -${headerOffset} 0 0' ${folder}/p${idx}.pdf ${folder}/p${idx}.pdf`, next);
-      },
-      (next) => {
-        async.during(
-          (callback) => {
-            return checkProblemMetadata(`${folder}/p${idx}.pdf`, 0, callback);
-          },
-          (callback) => {
-            console.log(`Trying to cut ${folder}/p${idx} 15pt more.`);
-            exec(`pdfcrop --margins '0 -12 0 0' ${folder}/p${idx}.pdf ${folder}/p${idx}.pdf`, callback);
-          },
-          next
-        );
+        let pdf = `${folder}/p${idx}.pdf`;
+        cropUntil(pdf, checkProblemMetadata.bind(null, pdf, 0), next);
       },
     ], callback);
   }
@@ -156,30 +146,17 @@ module.exports = function(problem, callback) {
     });
   }
 
-  function importer(problem, callback) {
-    let folder, allPdfFile, numberOfPages;
-    if (triedUrls[problem.originalUrl]) {
-      if (triedUrls[problem.originalUrl].success) {
-        return callback(Errors.NoNeedToImport);
-      } else {
-        return callback(Errors.ImportFailed);
-      }
-    }
-    triedUrls[problem.originalUrl] = { tried: true };
+  this.generatePdfs = (url, folderPrefix, callback) => {
+    let allPdfFile, numberOfPages;
+    let folder;
     let problemsIdx = [];
-    let problems;
-    console.log(`Loading ${problem.originalUrl}...`);
     async.waterfall([
       (next) => {
-        Problem.find({originalUrl: problem.originalUrl}, next);
-      },
-      (_problems, next) => {
-        problems = _problems;
-        return fs.mkdtemp('/tmp/pdf', next); // change
+        return fs.mkdtemp(`${folderPrefix}/pdf`, next); // change
       },
       (_folder, next) => {
         folder = _folder;
-        request({url: problem.originalUrl, encoding: null}, next);
+        request({url: url, encoding: null}, next);
       },
       (res, body, next) => {
         allPdfFile = path.join(folder, 'all.pdf');
@@ -193,9 +170,10 @@ module.exports = function(problem, callback) {
         async.timesSeries(numberOfPages, checkProblemMetadata.bind(null, allPdfFile), next);
       },
       (_data, next) => {
+        problemsIdx = [];
         for (let i = 0; i < _data.length; i++) {
           if (!_data[i]) continue;
-          allMetadata = _data[i];
+          if (!allMetadata) allMetadata = _data[i];
           let j = i+1;
           while (j < _data.length && !_data[j]) j++;
           problemsIdx.push({
@@ -207,17 +185,42 @@ module.exports = function(problem, callback) {
         if (problemsIdx.length === 0) {
           return next("Cannot import problems :(");
         }
-        if (problemsIdx.length !== problems.length) {
-          return next("Mismatch with the expected number of problems :(");
-        }
+        console.log(problemsIdx);
         exec(`pdftk ${allPdfFile} burst output ${folder}/%d.pdf`, next);
       },
       (stdout, stderr, next) => {
-        upperOffset = getUpperOffset(`${folder}/1.pdf`, next);
-        console.log('Using offset ' + upperOffset);
+        hasFooter = false;
+        try {
+          let text = getPDFTextWithHeight(`${folder}/${problemsIdx[0].startPage}.pdf`, 10000);
+          text = _.split(text, '\n');
+          text = _.filter(text, (o) => o.length > 0);
+          text = text.slice(-5);
+          hasFooter = _.some(text, (o) => o.match(/\s*Page\s+\d+/));
+        } catch (err) { return next(err); }
         async.eachOfSeries(problemsIdx, generateProblemPDF.bind(null, folder), next);
       },
+    ], (err) => {
+      return callback(err, folder, problemsIdx.length);
+    });
+  }
+
+  this.importProblemset = (problem, callback) => {
+    if (triedUrls[problem.originalUrl]) {
+      if (triedUrls[problem.originalUrl].success) {
+        return callback(Errors.NoNeedToImport);
+      } else {
+        return callback(Errors.ImportFailed);
+      }
+    }
+    triedUrls[problem.originalUrl] = { tried: true };
+    let folder, problems;
+    console.log(`Loading ${problem.originalUrl}...`);
+    async.waterfall([
       (next) => {
+        Problem.find({originalUrl: problem.originalUrl}, next);
+      },
+      (_problems, next) => {
+        problems = _problems;
         problems.sort((a, b) => {
           if (isNaN(a)) {
             return a.id.localeCompare(b.id);
@@ -226,6 +229,13 @@ module.exports = function(problem, callback) {
           else if (parseInt(a.id) === parseInt(b.id)) return 0;
           return 1;
         })
+        this.generatePdfs(problem.originalUrl, '.', next);
+      },
+      (_folder, importedCount, next) => {
+        if (importedCount !== problems.length) {
+          return next("Mismatch with the expected number of problems :(");
+        }
+        folder = _folder;
         async.eachOf(problems, importProblem.bind(null, folder), next);
       },
       (next) => {
@@ -242,5 +252,5 @@ module.exports = function(problem, callback) {
     });
   }
 
-  return importer(problem, callback);
+  return this;
 }
