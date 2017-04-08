@@ -42,6 +42,8 @@ exports.import = (problem, callback) => {
         }
         return $(this).html();
       });
+      let sid = $('a[href*="/onlinejudge/submit.do?problemId="]')
+        .attr('href').match(/=(\d+)$/)[1];
       body.children().slice(0,4).remove();
       html = body.html();
       let author = /\s*Author[^<]*<strong>([^<]*)<\/strong>/.exec(html);
@@ -61,6 +63,7 @@ exports.import = (problem, callback) => {
         data.source = 'Source: ' +
           ((author && source && `${source} (${author})`) || author || source);
       }
+      data.sid = sid;
       data.html = html;
     } catch (err) {
       return callback(err);
