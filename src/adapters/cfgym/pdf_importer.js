@@ -191,8 +191,8 @@ module.exports = function() {
       (next) => {
         return fs.ensureDir(folderPrefix, next);
       },
-      (next) => {
-        return fs.mkdtemp(`${folderPrefix}/pdf`, next); // change
+      (dir, next) => {
+        return fs.mkdtemp(`${folderPrefix}/pdf`, next);
       },
       (_folder, next) => {
         folder = _folder;
