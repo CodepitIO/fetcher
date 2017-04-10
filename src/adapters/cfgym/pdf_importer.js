@@ -117,12 +117,12 @@ module.exports = function() {
     try {
       metadata = _.chain(texts)
         .map((o) => {
-          if (/^\s*Problem\s*([\w\d]+)[.:]\s*(.+)?\s*$/.exec(o)) return 'name';
+          if (/^\s*Problem\s*([\w\d]{0,3})[.:]\s*(.+)?\s*$/.exec(o)) return 'name';
           if (/^\s*Problem\s+ID\s*[.:]\s*(.+)?\s*$/.exec(o)) return 'id';
-          if (/^\s*Time[^:]*:/.exec(o)) return 'tl';
-          if (/^\s*Memory[^:]*:/.exec(o)) return 'ml';
-          if (/^\s*Input[^:]*:/.exec(o)) return 'input';
-          if (/^\s*Output[^:]*:/.exec(o)) return 'output';
+          if (/^\s*Time[^:]{0,10}:/.exec(o)) return 'tl';
+          if (/^\s*Memory[^:]{0,10}:/.exec(o)) return 'ml';
+          if (/^\s*Input[^:]{0,10}:/.exec(o)) return 'input';
+          if (/^\s*Output[^:]{0,10}:/.exec(o)) return 'output';
           return null;
         })
         .filter()
@@ -138,7 +138,7 @@ module.exports = function() {
       metadata = _.chain(texts)
         .map((o, i) => {
           let name = null;
-          let match = /^\s*Problem\s*([\w\d]+)[.:]\s*(.+)?\s*$/.exec(o);
+          let match = /^\s*Problem\s*([\w\d]{0,3})[.:]\s*(.+)?\s*$/.exec(o);
           if (match) name = match[2];
           let match2 = /^\s*Problem\s*([A-Z]|[1-9]{1,2})\s*$/.exec(o);
           if (match2) name = texts[i+1];
