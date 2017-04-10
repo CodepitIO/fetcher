@@ -16,11 +16,12 @@ const Config = Util.getOJConfig(TYPE);
 const GYM_CONTESTS_API = "/api/contest.list?gym=true";
 const LIMITED_LANG_PATTERN  = "following languages are only available languages";
 const TIMELIMIT_PATTERN = /([\d.,]+)?\s*seconds?/i;
+const TRACKED_GROUPS = [ 'kZPk3ZTzR5' ];
 
 const client = new RequestClient(Config.url);
 
 function importHtml(problem, callback) {
-  let urlPath = Config.getProblemPath(problem.id);
+  let urlPath = Config.getProblemPath(problem.sid || problem.id);
   client.get(urlPath, (err, res, html) => {
     if (err) return callback(err);
     let data = {};
@@ -82,7 +83,10 @@ exports.import = (problem, callback) => {
 }
 
 function getContestProblemsMetadata(contest, callback) {
-  client.get(`/gym/${contest.id}`, (err, res, html) => {
+  let uri = (contest.group) ?
+    `/group/${contest.group}/contest/${contest.id}` :
+    `/gym/${contest.id}`;
+  client.get(uri, (err, res, html) => {
     if (err) {
       return callback(null, []);
     }
@@ -96,7 +100,7 @@ function getContestProblemsMetadata(contest, callback) {
       try {
         let id = contest.id + '/' + _.trim($(elem).children().eq(0).text());
         let pcell = $(elem).children().eq(1);
-        let _link = pcell.find(`a[href*="/gym/${contest.id}/problem/"]`);
+        let _link = pcell.find(`a[href*="/${contest.id}/problem/"]`);
         if (!link) link = _link.attr('href');
         let meta = pcell.find('.notice').remove('div');
         let io = _.trim(meta.find('div').text());
@@ -110,6 +114,9 @@ function getContestProblemsMetadata(contest, callback) {
           memorylimit: tlml[2] + ' MB',
           source: contest.name,
         };
+        if (contest.group) {
+          problem.sid = contest.group + '/' + problem.id;
+        }
         if (!io.startsWith('standard')) {
           problem.inputFile = _.trim(_.split(io, '/')[0]);
           problem.outputFile = _.trim(_.split(io, '/')[1]);
@@ -126,7 +133,9 @@ function getContestProblemsMetadata(contest, callback) {
       }
       try {
         let $ = cheerio.load(html);
-        let pdflink = _.trim($('td:contains("English")').next().find('a').attr('href'));
+        let td = $('td:contains("English")');
+        if (!td) td = $('td:contains("Portuguese")');
+        let pdflink = _.trim(td.next().find('a').attr('href'));
         if (!pdflink.endsWith('.pdf')) throw new Error("Not a pdf");
         _.each(problems, (o) => {
           o.isPdf = true;
@@ -140,7 +149,7 @@ function getContestProblemsMetadata(contest, callback) {
   });
 }
 
-exports.fetchProblems = (callback) => {
+function fetchProblemsFromGym(callback) {
   let problems = [];
   async.waterfall([
     (next) => {
@@ -153,4 +162,36 @@ exports.fetchProblems = (callback) => {
   ], (err, problems) => {
     return callback(err, _.flatten(problems));
   });
+}
+
+function fetchProblemFromGroup(problems, groupId, callback) {
+  client.get(`/group/${groupId}/contests`, (err, res, html) => {
+    let data = [];
+    let $ = cheerio.load(html);
+    $('tr.highlighted-row').each((i, elem) => {
+      let contestId = $(elem).attr('data-contestid');
+      let match = $(elem).find('td').first().html().match(/^\s*([\s\S]*?)\s*<br>/);
+      data.push({
+        name: _.trim(match[1]),
+        id: contestId,
+        group: groupId,
+      })
+    });
+    async.mapLimit(data, 10, getContestProblemsMetadata, (err, problems) => {
+      return callback(err, _.flatten(problems));
+    });
+  });
+}
+
+function fetchProblemsFromTrackedGroups(callback) {
+  async.reduce(TRACKED_GROUPS, [], fetchProblemFromGroup, callback);
+}
+
+exports.fetchProblems = (callback) => {
+  async.parallel([
+    fetchProblemsFromGym,
+    fetchProblemsFromTrackedGroups,
+  ], (err, results) => {
+    return callback(err, _.flatten(results));
+  })
 }

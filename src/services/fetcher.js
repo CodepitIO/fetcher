@@ -40,7 +40,7 @@ module.exports = (() => {
     });
   }
 
-  function uploadToS3FromStream(data, ext, body, callback) {
+  function uploadImageToS3(data, ext, body, callback) {
     let filename =
       data.problem.id +
       '_' +
@@ -78,7 +78,7 @@ module.exports = (() => {
           if (err) {
             return next(err);
           }
-          uploadToS3FromStream(data, ext, img, next);
+          uploadImageToS3(data, ext, img, next);
         });
       },
       (details, next) => {

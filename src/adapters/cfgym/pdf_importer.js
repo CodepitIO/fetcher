@@ -9,6 +9,7 @@ const _ = require('lodash');
 const S3 = require('../../services/dbs').S3;
 const Errors = require('../../../common/errors');
 const Utils = require('../../../common/lib/utils');
+const LangDetector = new (require('languagedetect'));
 
 let triedUrls = {};
 
@@ -117,12 +118,14 @@ module.exports = function() {
     try {
       metadata = _.chain(texts)
         .map((o) => {
-          if (/^\s*Problem\s*([\w\d]{0,3})[.:]\s*(.+)?\s*$/.exec(o)) return 'name';
+          if (/^\s*Problema?\s*([\w\d]{0,3})[.:]\s*(.+)?\s*$/.exec(o)) return 'name';
           if (/^\s*Problem\s+ID\s*[.:]\s*(.+)?\s*$/.exec(o)) return 'id';
           if (/^\s*Time[^:]{0,10}:/.exec(o)) return 'tl';
+          if (/^\s*Limite\s*de\s*tempo[^:]{0,10}:/.exec(o)) return 'tl';
           if (/^\s*Memory[^:]{0,10}:/.exec(o)) return 'ml';
           if (/^\s*Input[^:]{0,10}:/.exec(o)) return 'input';
           if (/^\s*Output[^:]{0,10}:/.exec(o)) return 'output';
+          if (/^\s*Arquivo-fonte[^:]{0,10}:/.exec(o)) return 'output';
           return null;
         })
         .filter()
@@ -138,9 +141,9 @@ module.exports = function() {
       metadata = _.chain(texts)
         .map((o, i) => {
           let name = null;
-          let match = /^\s*Problem\s*([\w\d]{0,3})[.:]\s*(.+)?\s*$/.exec(o);
+          let match = /^\s*Problema?\s*([\w\d]{0,3})[.:]\s*(.+)?\s*$/.exec(o);
           if (match) name = match[2];
-          let match2 = /^\s*Problem\s*([A-Z]|[1-9]{1,2})\s*$/.exec(o);
+          let match2 = /^\s*Problema?\s*([A-Z]|[1-9]{1,2})\s*$/.exec(o);
           if (match2) name = texts[i+1];
           if (name && name.length > 50) name = null;
           return name;
@@ -161,7 +164,7 @@ module.exports = function() {
     });
   }
 
-  function importProblem(folder, data, problem, i, callback) {
+  function importProblem(language, folder, data, problem, i, callback) {
     S3.upload({
         Key: `assets/problems/${problem.oj}/${problem.id}.pdf`,
         Body: fs.createReadStream(`${folder}/p${i}.pdf`),
@@ -174,6 +177,7 @@ module.exports = function() {
         problem.name = data[i].name;
       }
       problem.fullName = null;
+      problem.language = language;
       problem.importDate = new Date();
       problem.imported = true;
       problem.url = Utils.getURIFromS3Metadata(details);
@@ -183,7 +187,7 @@ module.exports = function() {
   }
 
   this.generatePdfs = (url, folderPrefix, callback) => {
-    let allPdfFile, numberOfPages;
+    let allPdfFile, numberOfPages, language;
     let folder;
     let problemsIdx = [];
     console.log(`Loading ${url}...`);
@@ -234,13 +238,19 @@ module.exports = function() {
           text = _.split(text, '\n');
           text = _.filter(text, (o) => o.length > 0);
           text = text.slice(-5);
-          hasFooter = _.some(text, (o) => o.match(/\s*Page\s+\d+/));
+          hasFooter = _.some(text, (o) => {
+            if (o.match(/\s*Page\s+\d+/)) return true;
+            if (o.match(/^\s*Pagina\s*\d*/)) return true;
+            return false;
+          });
         } catch (err) { return next(err); }
         upperOffset = getUpperOffset(`${folder}/${problemsIdx[0].startPage}.pdf`);
+        let langs = LangDetector.detect(getPDFTextSync(`${folder}/${problemsIdx[0].startPage}.pdf`));
+        language = langs && langs.length > 0 && langs[0] || 'english';
         async.eachOfSeries(problemsIdx, generateProblemPDF.bind(null, folder), next);
       },
     ], (err) => {
-      return callback(err, folder, problemsIdx);
+      return callback(err, folder, language, problemsIdx);
     });
   }
 
@@ -271,12 +281,12 @@ module.exports = function() {
         })
         this.generatePdfs(problem.originalUrl, '/tmp', next);
       },
-      (_folder, data, next) => {
+      (_folder, language, data, next) => {
         if (data.length !== problems.length) {
           return next("Mismatch with the expected number of problems :(");
         }
         folder = _folder;
-        async.eachOf(problems, importProblem.bind(null, folder, data), next);
+        async.eachOf(problems, importProblem.bind(null, language, folder, data), next);
       },
       (next) => {
         return fs.remove(folder, next);
