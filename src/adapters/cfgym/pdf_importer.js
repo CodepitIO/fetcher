@@ -13,11 +13,11 @@ const Utils = require('../../../common/lib/utils');
 let triedUrls = {};
 
 module.exports = function() {
-  let allMetadata, hasFooter;
+  let hasFooter, upperOffset;
 
-  function getPDFTextWithHeight(file, k) {
+  function getPDFTextSync(file) {
     try {
-      let out = execSync(`pdftotext ${file} -x 0 -y 0 -W 2000 -H ${k} -`);
+      let out = execSync(`pdftotext ${file} -`);
       return out.toString('utf8');
     } catch (e) {}
     return null;
@@ -28,51 +28,60 @@ module.exports = function() {
       let i = 0, j = 256;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        let metadata = hasMetadata(getPDFTextWithHeight(file, k));
-        if (metadata && metadata.includes('name')) {
+        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
+        let text = getPDFTextSync(file + '.tmp.pdf');
+        let hasName = getName(_.split(text, '\n').slice(0, 15));
+        if (!hasName) {
           j = k - 1;
         } else {
           i = k;
         }
       }
-      let length = getPDFTextWithHeight(file, i).length;
       i = 0;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        let out = execSync(`pdftotext ${file} -x 0 -y 0 -W 2000 -H ${k} -`).toString('utf8');
-        if (out.length === length) {
+        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
+        let text = getPDFTextSync(file + '.tmp.pdf');
+        let hasName = getName(_.split(text, '\n').slice(0, 1));
+        if (hasName) {
           j = k - 1;
         } else {
           i = k;
         }
       }
-      return Math.ceil((i+1) * 1.25);
+      return i + 5;
     } catch (err) {
       return 0;
     }
   }
 
-  function cropUntil(pdf, checkFunction, callback) {
-    async.during(
-      (next) => {
-        return checkFunction(next);
-      },
-      (next) => {
-        console.log(`Trying to cut ${pdf} 8pt more.`);
-        exec(`pdfcrop --margins '0 -8 0 0' ${pdf} ${pdf}`, next);
-      },
-      callback
-    );
+  function getMetadataOffset(file) {
+    try {
+      let i = 0, j = 256;
+      while (i < j) {
+        let k = Math.ceil((i + j) / 2);
+        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
+        let text = getPDFTextSync(file + '.tmp.pdf');
+        let has = hasMetadata(_.split(text, '\n').slice(0, 15));
+        if (!has) {
+          j = k - 1;
+        } else {
+          i = k;
+        }
+      }
+      return i + 5;
+    } catch (err) {
+      return 0;
+    }
   }
 
-  function cropProblemUpperHeader(folder, data, upperOffset, bottomOffset, i, callback) {
+  function cropProblemUpperHeader(folder, data, upper, bottom, i, callback) {
     let page = data.startPage + i;
-    return exec(`pdfcrop --margins '0 -${upperOffset} 0 -${bottomOffset}' ${folder}/${page}.pdf ${folder}/${page}.pdf`, callback);
+    return exec(`pdfcrop --margins '0 -${upper} 0 -${bottom}' ${folder}/${page}.pdf ${folder}/${page}.pdf`, callback);
   }
 
   function generateProblemPDF(folder, data, idx, callback) {
     let problemPageCount = data.endPage - data.startPage + 1;
-
     async.series([
       (next) => {
         let bottomOffset = 0;
@@ -82,8 +91,6 @@ module.exports = function() {
         async.timesSeries(problemPageCount, cropProblemUpperHeader.bind(null, folder, data, 0, bottomOffset), next);
       },
       (next) => {
-        upperOffset = getUpperOffset(`${folder}/${data.startPage}.pdf`);
-        console.log('Using upper offset ' + upperOffset);
         async.timesSeries(problemPageCount, cropProblemUpperHeader.bind(null, folder, data, upperOffset, 0), next);
       },
       (next) => {
@@ -98,45 +105,74 @@ module.exports = function() {
       },
       (next) => {
         let pdf = `${folder}/p${idx}.pdf`;
-        cropUntil(pdf, checkProblemMetadata.bind(null, pdf, 0), next);
+        let metadataOffset = getMetadataOffset(pdf);
+        console.log(`${idx}: Metadata offset ${metadataOffset}`);
+        exec(`pdfcrop --margins '0 -${metadataOffset} 0 0' ${pdf} ${pdf}`, next);
       },
     ], callback);
   }
 
-  function hasMetadata(text) {
+  function hasMetadata(texts) {
     let metadata = [];
     try {
-      metadata = _.chain(_.split(text, '\n').slice(0, 30))
+      metadata = _.chain(texts)
         .map((o) => {
-          if (/Problem.*?[.:]/.exec(o)) return 'name';
-          if (/Time[^:]*:/.exec(o)) return 'tl';
-          if (/Memory[^:]*:/.exec(o)) return 'ml';
-          if (/Input[^:]*:/.exec(o)) return 'input';
-          if (/Output[^:]*:/.exec(o)) return 'output';
+          if (/^\s*Problem\s*([\w\d]+)[.:]\s*(.+)?\s*$/.exec(o)) return 'name';
+          if (/^\s*Problem\s+ID\s*[.:]\s*(.+)?\s*$/.exec(o)) return 'id';
+          if (/^\s*Time[^:]*:/.exec(o)) return 'tl';
+          if (/^\s*Memory[^:]*:/.exec(o)) return 'ml';
+          if (/^\s*Input[^:]*:/.exec(o)) return 'input';
+          if (/^\s*Output[^:]*:/.exec(o)) return 'output';
           return null;
         })
         .filter()
         .uniq()
         .value()
     } catch (e) {}
-    return metadata.length > 0 ? metadata : null;
+    return metadata && metadata.length > 0;
   }
 
-  function checkProblemMetadata(pdf, i, callback) {
+  function getName(texts) {
+    let metadata = [];
+    try {
+      metadata = _.chain(texts)
+        .map((o, i) => {
+          let name = null;
+          let match = /^\s*Problem\s*([\w\d]+)[.:]\s*(.+)?\s*$/.exec(o);
+          if (match) name = match[2];
+          let match2 = /^\s*Problem\s*([A-Z]|[1-9]{1,2})\s*$/.exec(o);
+          if (match2) name = texts[i+1];
+          if (name && name.length > 50) name = null;
+          return name;
+        })
+        .filter()
+        .uniq()
+        .value()
+    } catch (e) {}
+    return metadata && metadata.length > 0 && metadata[0];
+  }
+
+  function checkProblemName(pdf, i, callback) {
     exec(`pdftotext ${pdf} -f ${i+1} -l ${i+1} -`, (err, stdout, stderr) => {
       if (err) {
         return callback(err);
       }
-      return callback(null, hasMetadata(stdout));
+      return callback(null, getName(_.split(stdout, '\n').slice(0, 15)));
     });
   }
 
-  function importProblem(folder, problem, i, callback) {
+  function importProblem(folder, data, problem, i, callback) {
     S3.upload({
         Key: `assets/problems/${problem.oj}/${problem.id}.pdf`,
         Body: fs.createReadStream(`${folder}/p${i}.pdf`),
         ACL: 'public-read',
         CacheControl: 'max-age=31536000'}, (err, details) => {
+      if (err) {
+        return callback(err);
+      }
+      if (problem.name.length <= 2 && data[i].name.length > 2) {
+        problem.name = data[i].name;
+      }
       problem.fullName = null;
       problem.importDate = new Date();
       problem.imported = true;
@@ -150,6 +186,7 @@ module.exports = function() {
     let allPdfFile, numberOfPages;
     let folder;
     let problemsIdx = [];
+    console.log(`Loading ${url}...`);
     async.waterfall([
       (next) => {
         return fs.mkdtemp(`${folderPrefix}/pdf`, next); // change
@@ -167,16 +204,16 @@ module.exports = function() {
       },
       (stdout, stderr, next) => {
         numberOfPages = parseInt(stdout);
-        async.timesSeries(numberOfPages, checkProblemMetadata.bind(null, allPdfFile), next);
+        async.timesSeries(numberOfPages, checkProblemName.bind(null, allPdfFile), next);
       },
       (_data, next) => {
         problemsIdx = [];
         for (let i = 0; i < _data.length; i++) {
           if (!_data[i]) continue;
-          if (!allMetadata) allMetadata = _data[i];
           let j = i+1;
           while (j < _data.length && !_data[j]) j++;
           problemsIdx.push({
+            name: _data[i],
             startPage: i+1,
             endPage: j,
           });
@@ -185,22 +222,22 @@ module.exports = function() {
         if (problemsIdx.length === 0) {
           return next("Cannot import problems :(");
         }
-        console.log(problemsIdx);
         exec(`pdftk ${allPdfFile} burst output ${folder}/%d.pdf`, next);
       },
       (stdout, stderr, next) => {
         hasFooter = false;
         try {
-          let text = getPDFTextWithHeight(`${folder}/${problemsIdx[0].startPage}.pdf`, 10000);
+          let text = getPDFTextSync(`${folder}/${problemsIdx[0].startPage}.pdf`);
           text = _.split(text, '\n');
           text = _.filter(text, (o) => o.length > 0);
           text = text.slice(-5);
           hasFooter = _.some(text, (o) => o.match(/\s*Page\s+\d+/));
         } catch (err) { return next(err); }
+        upperOffset = getUpperOffset(`${folder}/${problemsIdx[0].startPage}.pdf`);
         async.eachOfSeries(problemsIdx, generateProblemPDF.bind(null, folder), next);
       },
     ], (err) => {
-      return callback(err, folder, problemsIdx.length);
+      return callback(err, folder, problemsIdx);
     });
   }
 
@@ -214,7 +251,7 @@ module.exports = function() {
     }
     triedUrls[problem.originalUrl] = { tried: true };
     let folder, problems;
-    console.log(`Loading ${problem.originalUrl}...`);
+    console.log(`Importing problemset of contest ${problem.id}`);
     async.waterfall([
       (next) => {
         Problem.find({originalUrl: problem.originalUrl}, next);
@@ -229,14 +266,14 @@ module.exports = function() {
           else if (parseInt(a.id) === parseInt(b.id)) return 0;
           return 1;
         })
-        this.generatePdfs(problem.originalUrl, '.', next);
+        this.generatePdfs(problem.originalUrl, '/tmp', next);
       },
-      (_folder, importedCount, next) => {
-        if (importedCount !== problems.length) {
+      (_folder, data, next) => {
+        if (data.length !== problems.length) {
           return next("Mismatch with the expected number of problems :(");
         }
         folder = _folder;
-        async.eachOf(problems, importProblem.bind(null, folder), next);
+        async.eachOf(problems, importProblem.bind(null, folder, data), next);
       },
       (next) => {
         return fs.remove(folder, next);
