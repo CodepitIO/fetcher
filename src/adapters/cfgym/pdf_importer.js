@@ -189,6 +189,9 @@ module.exports = function() {
     console.log(`Loading ${url}...`);
     async.waterfall([
       (next) => {
+        return fs.ensureDir(folderPrefix, next);
+      },
+      (next) => {
         return fs.mkdtemp(`${folderPrefix}/pdf`, next); // change
       },
       (_folder, next) => {
