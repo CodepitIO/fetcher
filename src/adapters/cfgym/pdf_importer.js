@@ -200,7 +200,7 @@ module.exports = function() {
       },
       (_folder, next) => {
         folder = _folder;
-        request({url: url, encoding: null}, next);
+        request({url: encodeURI(url), encoding: null}, next);
       },
       (res, body, next) => {
         allPdfFile = path.join(folder, 'all.pdf');
@@ -210,6 +210,7 @@ module.exports = function() {
         exec(`pdftk ${allPdfFile} dump_data | grep NumberOfPages | cut -d' ' -f2-`, next);
       },
       (stdout, stderr, next) => {
+        if (stderr) return next(stderr);
         numberOfPages = parseInt(stdout);
         async.timesSeries(numberOfPages, checkProblemName.bind(null, allPdfFile), next);
       },
