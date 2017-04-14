@@ -59,6 +59,7 @@ function importHtml(problem, callback) {
       content.removeAttr('problemindex');
       content.find('.header').remove();
       data.html = content.html();
+      data.originalUrl = Config.url + urlPath;
       assert(data.html.length > 0);
     } catch (err) {
       return callback(err);
