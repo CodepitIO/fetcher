@@ -6,21 +6,20 @@ const path    = require('path'),
       cheerio = require('cheerio'),
       _       = require('lodash');
 
-const RequestClient = require('../../../common/lib/requestClient'),
-      CFPdfImporter = require('../../services/cf_pdf_importer'),
-      Util          = require('../../../common/lib/utils');
+const RequestClient   = require('../../../common/lib/requestClient'),
+      CFPdfImporter  = require('../../services/cf_pdf_importer'),
+      Util            = require('../../../common/lib/utils');
 
 const TYPE = path.basename(__dirname);
 const Config = Util.getOJConfig(TYPE);
 
-const GYM_CONTESTS_API = "/api/contest.list?gym=true";
 const LIMITED_LANG_PATTERN  = "following languages are only available languages";
 const TIMELIMIT_PATTERN = /([\d.,]+)?\s*seconds?/i;
 
 const client = new RequestClient(Config.url);
 
 function importHtml(problem, callback) {
-  let urlPath = Config.getProblemPath(problem.id);
+  let urlPath = Config.getProblemPath(problem.sid);
   client.get(urlPath, (err, res, html) => {
     if (err) return callback(err);
     let data = {};
@@ -82,7 +81,7 @@ exports.import = (problem, callback) => {
 }
 
 function getContestProblemsMetadata(contest, callback) {
-  let uri = `/gym/${contest.id}`;
+  let uri = `/group/${contest.group}/contest/${contest.id}`;
   client.get(uri, (err, res, html) => {
     if (err) {
       return callback(null, []);
@@ -111,6 +110,9 @@ function getContestProblemsMetadata(contest, callback) {
           memorylimit: tlml[2] + ' MB',
           source: contest.name,
         };
+        if (contest.group) {
+          problem.sid = contest.group + '/' + problem.id;
+        }
         if (!io.startsWith('standard')) {
           problem.inputFile = _.trim(_.split(io, '/')[0]);
           problem.outputFile = _.trim(_.split(io, '/')[1]);
@@ -143,17 +145,34 @@ function getContestProblemsMetadata(contest, callback) {
   });
 }
 
+function fetchProblemsFromGroup(problems, groupId, callback) {
+  client.get(`/group/${groupId}/contests`, (err, res, html) => {
+    let data = [];
+    let $ = cheerio.load(html);
+    $('tr.highlighted-row').each((i, elem) => {
+      let contestId = $(elem).attr('data-contestid');
+      let match = $(elem).find('td').first().html().match(/^\s*([\s\S]*?)\s*<br>/);
+      data.push({
+        name: _.trim(match[1]),
+        id: contestId,
+        group: groupId,
+      })
+    });
+    async.mapLimit(data, 10, getContestProblemsMetadata, (err, problems) => {
+      return callback(err, _.flatten(problems));
+    });
+  });
+}
+
+function fetchProblemsFromTrackedGroups(callback) {
+  async.reduce(Config.getTrackedGroups(), [], fetchProblemsFromGroup, callback);
+}
+
 exports.fetchProblems = (callback) => {
-  let problems = [];
-  async.waterfall([
-    (next) => {
-      client.get(GYM_CONTESTS_API, {json: true}, next);
-    },
-    (res, data, next) => {
-      data = _.filter(data.result, (o) => o.phase === 'FINISHED');
-      return async.mapLimit(data, 10, getContestProblemsMetadata, next);
-    },
-  ], (err, problems) => {
-    return callback(err, _.flatten(problems));
+  fetchProblemsFromTrackedGroups((err, results) => {
+    if (err) {
+      return callback(err);
+    }
+    return callback(null, _.flatten(results));
   });
 }

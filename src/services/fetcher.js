@@ -152,7 +152,7 @@ module.exports = (() => {
 
   function prettyFetchProblems(oj, callback) {
     oj.fetchProblems((err, fetched) => {
-      console.log(oj)
+      console.log(oj.type)
       if (!fetched) err = err || new Error()
       if (err) console.log(err)
       else console.log(fetched.length + ' problems')
@@ -247,7 +247,7 @@ module.exports = (() => {
         if (err !== Errors.NoNeedToImport) {
           return importSaveFail(problem, callback)
         }
-        return;
+        return callback();
       }
       count++
       problem.importDate = new Date()
@@ -327,6 +327,7 @@ module.exports = (() => {
   function importOJServices(callback) {
     _.forEach(C.OJS, (oj) => {
       ojs[oj] = require(`../adapters/${oj}/service`);
+      ojs[oj].type = oj;
     });
     return callback();
   }

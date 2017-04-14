@@ -1,15 +1,16 @@
-const request = require('request');
-const fs = require('fs-extra');
-const path = require('path');
-const async = require('async');
-const exec = require('child_process').exec;
-const execSync = require('child_process').execSync;
-const Problem = require('../../../common/models/problem');
-const _ = require('lodash');
-const S3 = require('../../services/dbs').S3;
-const Errors = require('../../../common/errors');
-const Utils = require('../../../common/lib/utils');
-const LangDetector = new (require('languagedetect'));
+const request   = require('request'),
+      fs        = require('fs-extra'),
+      path      = require('path'),
+      async     = require('async'),
+      exec      = require('child_process').exec,
+      execSync  = require('child_process').execSync,
+      _ = require('lodash');
+
+const Problem       = require('../../common/models/problem'),
+      S3            = require('./dbs').S3,
+      Errors        = require('../../common/errors'),
+      Utils         = require('../../common/lib/utils'),
+      LangDetector  = new (require('languagedetect'));
 
 let triedUrls = {};
 
