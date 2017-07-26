@@ -6,6 +6,8 @@ const mongoose  = require('mongoose'),
 const C = require('../../common/constants');
 
 mongoose.Promise = require('bluebird')
-mongoose.connect(C.CONN.MONGO.GET_URL());
+mongoose.connect(C.CONN.MONGO.GET_URL(), {
+  useMongoClient: true,
+});
 
 exports.S3 = new aws.S3({params: {Bucket: C.CONN.GET_S3_BUCKET()}})

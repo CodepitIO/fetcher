@@ -4,6 +4,7 @@ node_modules/
 
 ### *nix OS / apps
 
+*.tex
 *.log
 *.swp
 *~
