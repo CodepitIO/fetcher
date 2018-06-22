@@ -29,7 +29,7 @@ exports.import = (problem, callback) => {
     try {
       data.supportedLangs = Config.getSupportedLangs();
       html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
-      data.timelimit = parseFloat(html.match(TIMELIMIT_PATTERN)[1])
+      data.timelimit = parseFloat(html.match(TIMELIMIT_PATTERN)[1]);
       data.memorylimit = Math.round(parseFloat(html.match(
         MEMOLIMIT_PATTERN)[1]) / 1024.) + ' MB';
       let $ = cheerio.load(html);
@@ -70,7 +70,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 function processProblems(problemsPath, problems, callback) {
   client.get(problemsPath, (err, res, html) => {
@@ -117,4 +117,4 @@ exports.fetchProblems = (callback) => {
       return callback(null, problems);
     }
   );
-}
+};

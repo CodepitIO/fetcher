@@ -66,7 +66,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 function reduceProblems(problems, href, callback) {
   client.get(href, (err, res, html) => {
@@ -91,4 +91,4 @@ function reduceProblems(problems, href, callback) {
 
 exports.fetchProblems = (callback) => {
   async.reduce(VOLUMES, [], reduceProblems, callback);
-}
+};

@@ -79,7 +79,7 @@ exports.import = (problem, callback) => {
     return callback(null, problem);
   }
   return importHtml(problem, callback);
-}
+};
 
 function getContestProblemsMetadata(contest, callback) {
   let uri = `/gym/${contest.id}`;
@@ -156,4 +156,4 @@ exports.fetchProblems = (callback) => {
   ], (err, problems) => {
     return callback(err, _.flatten(problems));
   });
-}
+};

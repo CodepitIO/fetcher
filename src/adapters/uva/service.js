@@ -24,11 +24,11 @@ const PROBLEM_METADATA_API = "http://uhunt.felix-halim.net/api/p/num/%s";
 
 function getContent(urlPath, data, html, id) {
   if (!_.includes(html, '<body>')) {
-    html = `<body>${html}</body>`
+    html = `<body>${html}</body>`;
   }
   html = html.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
   let $ = cheerio.load(html);
-  let body = $('body')
+  let body = $('body');
   let vol = parseInt(id / 100);
   Util.adjustAnchors($, Config.url + urlPath);
   body.find('table[bgcolor="#0060F0"]').first().remove();
@@ -57,10 +57,10 @@ exports.import = (problem, callback) => {
   let problemUrl = Config.getProblemPath(problem.id);
   async.parallel({
     meta: (next) => {
-      return client.get(metadataUrl, {json: true}, next)
+      return client.get(metadataUrl, {json: true}, next);
     },
     body: (next) => {
-      return client.get(problemUrl, {encoding: null}, next)
+      return client.get(problemUrl, {encoding: null}, next);
     }
   }, (err, results) => {
     if (err) return callback(err);
@@ -69,15 +69,15 @@ exports.import = (problem, callback) => {
       data.supportedLangs = Config.getSupportedLangs();
       let tl = results.meta[1] && results.meta[1].rtl || 3000;
       data.timelimit = tl / 1000.0;
-      let html = iconv.decode(results.body[1], 'ISO-8859-1')
-      data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200)
-      if (!data.isPdf) getContent(problemUrl, data, html, problem.id)
+      let html = iconv.decode(results.body[1], 'ISO-8859-1');
+      data.isPdf = (_.includes(html, "HTTP-EQUIV") && html.length <= 200);
+      if (!data.isPdf) getContent(problemUrl, data, html, problem.id);
     } catch (err) {
       return callback(err);
     }
     return callback(null, data);
   });
-}
+};
 
 function reduceProblems(problems, href, callback) {
   client.get(href, (err, res, html) => {
@@ -117,4 +117,4 @@ function reduceVolumes(problems, volumePath, callback) {
 
 exports.fetchProblems = (callback) => {
   async.reduce(VOLUMES, [], reduceVolumes, callback);
-}
+};

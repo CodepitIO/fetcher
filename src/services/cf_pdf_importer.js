@@ -131,7 +131,7 @@ module.exports = function() {
         })
         .filter()
         .uniq()
-        .value()
+        .value();
     } catch (e) {}
     return metadata && metadata.length > 0;
   }
@@ -151,7 +151,7 @@ module.exports = function() {
         })
         .filter()
         .uniq()
-        .value()
+        .value();
     } catch (e) {}
     return metadata && metadata.length > 0 && metadata[0];
   }
@@ -254,7 +254,7 @@ module.exports = function() {
     ], (err) => {
       return callback(err, folder, language, problemsIdx);
     });
-  }
+  };
 
   this.importProblemset = (problem, callback) => {
     if (triedUrls[problem.originalUrl]) {
@@ -280,7 +280,7 @@ module.exports = function() {
           if (parseInt(a.id) < parseInt(b.id)) return -1;
           else if (parseInt(a.id) === parseInt(b.id)) return 0;
           return 1;
-        })
+        });
         this.generatePdfs(problem.originalUrl, '/tmp', next);
       },
       (_folder, language, data, next) => {
@@ -302,7 +302,7 @@ module.exports = function() {
       }
       return callback(Errors.NoNeedToImport);
     });
-  }
+  };
 
   return this;
-}
+};

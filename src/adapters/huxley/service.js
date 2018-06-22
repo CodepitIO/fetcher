@@ -5,7 +5,7 @@ const fs        = require('fs'),
       assert    = require('assert'),
       path      = require('path'),
       util      = require('util'),
-      _         = require('lodash')
+      _         = require('lodash');
 
 const Errors        = require('../../../common/errors'),
       RequestClient = require('../../../common/lib/requestClient'),
@@ -72,7 +72,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 function processProblems(problemsPath, problems, callback) {
   client.get(problemsPath, (err, res, data) => {
@@ -108,4 +108,4 @@ exports.fetchProblems = (callback) => {
       return callback(null, problems);
     }
   );
-}
+};

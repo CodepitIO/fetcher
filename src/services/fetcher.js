@@ -10,13 +10,13 @@ const CronJob = require('cron').CronJob,
       stream  = require('stream'),
       util    = require('util'),
       url     = require('url'),
-      _       = require('lodash')
+      _       = require('lodash');
 
 const Problem   = require('../../common/models/problem'),
       Errors    = require('../../common/errors'),
       Utils     = require('../../common/lib/utils'),
       C         = require('../../common/constants'),
-      S3        = require('./dbs').S3
+      S3        = require('./dbs').S3;
 
 const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000;
 const IMPORT_QUEUE_CONCURRENCY = 50;
@@ -30,11 +30,11 @@ module.exports = (() => {
   let allProblems = {};
   let ojs = {};
 
-  let count = 0
+  let count = 0;
 
   function importSaveFail(problem, callback) {
-    if (!problem.imported) problem.importTries++
-    console.log(`<<< Error! ${problem.id} from ${problem.oj}.`)
+    if (!problem.imported) problem.importTries++;
+    console.log(`<<< Error! ${problem.id} from ${problem.oj}.`);
     return problem.save(() => {
       return callback && callback(Errors.ImportFailed);
     });
@@ -53,7 +53,7 @@ module.exports = (() => {
       CacheControl: 'max-age=31536000',
     };
     return S3.upload(params, callback);
-  };
+  }
 
   let uploadImageToS3Queue = async.queue((data, callback) => {
     async.waterfall([
@@ -64,7 +64,7 @@ module.exports = (() => {
         if (!res || !res.headers) {
           return next(new Error(`${data.uri} is not an image`));
         }
-        let ext = mime.extension(res.headers['content-type'] || '');
+        let ext = mime.getExtension(res.headers['content-type'] || '');
         if (!ext) {
           let match = /\.(png|bmp|jpeg|jpg|gif|tiff)$/i.exec(data.uri);
           ext = match && match[1];
@@ -97,27 +97,27 @@ module.exports = (() => {
         // some ojs may have their own pdf import logic
         return ojs[problem.oj].importPdf(problem, callback);
       }
-      let url = OJConfig.url + OJConfig.getProblemPdfPath(problem.id)
+      let url = OJConfig.url + OJConfig.getProblemPdfPath(problem.id);
       request({url: url, encoding: null}, (err, res, body) => {
         if (err || res.headers['content-length'] < 200 || res.headers['content-type'] !== 'application/pdf') {
-          return callback(err || new Error())
+          return callback(err || new Error());
         }
         S3.upload({
           Key: `assets/problems/${problem.oj}/${problem.id}.pdf`,
           Body: body,
           ACL: 'public-read',
           CacheControl: 'max-age=31536000',
-        }, callback)
-      })
+        }, callback);
+      });
     } else {
       return S3.upload({
         Key: `assets/problems/${problem.oj}/${problem.id}.html`,
         Body: problem.html,
         ACL: 'public-read',
         CacheControl: 'max-age=1209600',
-      }, callback)
+      }, callback);
     }
-  }, S3_QUEUE_CONCURRENCY)
+  }, S3_QUEUE_CONCURRENCY);
 
   function fetchImgSrcs(html, problem, callback) {
     const ojConfig = Utils.getOJConfig(problem.oj);
@@ -146,22 +146,22 @@ module.exports = (() => {
 
   function saveProblems(problems, callback) {
     async.eachSeries(problems, (data, next) => {
-      Problem(data).save(() => { return next() });
+      Problem(data).save(() => { return next(); });
     }, callback);
   }
 
   function prettyFetchProblems(oj, callback) {
     oj.fetchProblems((err, fetched) => {
-      console.log(oj.type)
-      if (!fetched) err = err || new Error()
-      if (err) console.log(err)
-      else console.log(fetched.length + ' problems')
-      return callback(err, fetched)
-    })
+      console.log(oj.type);
+      if (!fetched) err = err || new Error();
+      if (err) console.log(err);
+      else console.log(fetched.length + ' problems');
+      return callback(err, fetched);
+    });
   }
 
   function runProblemFetchers() {
-    console.log('Running daily fetcher...')
+    console.log('Running daily fetcher...');
     async.waterfall([
       (next) => {
         async.map(ojs, (oj, cb) => {
@@ -179,8 +179,8 @@ module.exports = (() => {
       (problems, next) => {
         problems = _.chain(problems)
         .reduce((result, elem, key) => {
-          if (_.isArray(elem.value)) return _.concat(result, _.values(elem.value))
-          else return result
+          if (_.isArray(elem.value)) return _.concat(result, _.values(elem.value));
+          else return result;
         }, [])
         .filter((obj) => {
           return !_.has(allProblems, [obj.oj, obj.id]);
@@ -205,7 +205,7 @@ module.exports = (() => {
    *    imported.
    */
   function startDailyFetcher(callback) {
-    console.log('Setting up daily fetcher...')
+    console.log('Setting up daily fetcher...');
     let job = new CronJob({
       cronTime: FETCH_PROBLEMS_CRON,
       onTick: runProblemFetchers,
@@ -236,26 +236,26 @@ module.exports = (() => {
       (_hasImage, html, next) => {
         hasImage = _hasImage;
         data.html = html;
-        problem.fullName = null
+        problem.fullName = null;
         for (var key in data) {
-          problem[key] = data[key]
+          problem[key] = data[key];
         }
         return uploadProblemToS3Queue.push(problem, next);
       },
     ], (err, details) => {
       if (err) {
         if (err !== Errors.NoNeedToImport) {
-          return importSaveFail(problem, callback)
+          return importSaveFail(problem, callback);
         }
         return callback();
       }
-      count++
-      problem.importDate = new Date()
-      problem.imported = true
-      problem.url = Utils.getURIFromS3Metadata(details)
-      console.log(`${count}: Imported ${problem.id} from ${problem.oj} (${problem._id}). ${problem.url} ${hasImage}`)
-      problem.html = undefined
-      return problem.save(callback)
+      count++;
+      problem.importDate = new Date();
+      problem.imported = true;
+      problem.url = Utils.getURIFromS3Metadata(details);
+      console.log(`${count}: Imported ${problem.id} from ${problem.oj} (${problem._id}). ${problem.url} ${hasImage}`);
+      problem.html = undefined;
+      return problem.save(callback);
     });
   }
 
@@ -266,7 +266,7 @@ module.exports = (() => {
     }, 2 * 60 * 1000)(callback);
   }, IMPORT_QUEUE_CONCURRENCY);
 
-  let ojQueues = {}
+  let ojQueues = {};
   function getPushImportProblemToOJQueue(oj) {
     if (!ojQueues[oj]) {
       ojQueues[oj] = async.queue(
@@ -302,25 +302,25 @@ module.exports = (() => {
   function importProblemSet(problems, callback) {
     let importers = _.chain(problems)
       .filter((problem) => {
-        return shouldImport(problem)
+        return shouldImport(problem);
       })
       .shuffle()
       .map((problem) => {
         return async.retryable(3, async.apply(getPushImportProblemToOJQueue(problem.oj), problem));
       })
-      .value()
+      .value();
     async.parallel(async.reflectAll(importers), () => {
-      return callback && callback()
+      return callback && callback();
     });
   }
 
   function loadProblems(callback) {
     Problem.find((err, problems) => {
-      allProblems = _.groupBy(problems, 'oj')
+      allProblems = _.groupBy(problems, 'oj');
       _.forEach(allProblems, (value, oj) => {
-        allProblems[oj] = _.keyBy(value, 'id')
-      })
-      return callback && callback(null, problems)
+        allProblems[oj] = _.keyBy(value, 'id');
+      });
+      return callback && callback(null, problems);
     });
   }
 
@@ -333,25 +333,25 @@ module.exports = (() => {
   }
 
   function loadS3Objects(callback) {
-    let CT = undefined
-    let s3Objects = {}
-    let totalSize = 0
+    let CT = undefined;
+    let s3Objects = {};
+    let totalSize = 0;
     async.forever((next) => {
       S3.listObjectsV2({Prefix: 'problems/', ContinuationToken: CT}, (err, data) => {
-        if (err) return next(err)
+        if (err) return next(err);
         _.forEach(data.Contents, (val) => {
-          totalSize += val.Size
-          let key = val.Key.match(/problems\/(.*)\.+/i)
-          if (key) s3Objects[key[1]] = val.Key
-        })
-        console.log(`AWS S3 ${totalSize / 1024 / 1024}MB accumulate`)
-        if (!data.NextContinuationToken) return callback && callback()
-        CT = data.NextContinuationToken
-        return next()
-      })
+          totalSize += val.Size;
+          let key = val.Key.match(/problems\/(.*)\.+/i);
+          if (key) s3Objects[key[1]] = val.Key;
+        });
+        console.log(`AWS S3 ${totalSize / 1024 / 1024}MB accumulate`);
+        if (!data.NextContinuationToken) return callback && callback();
+        CT = data.NextContinuationToken;
+        return next();
+      });
     }, () => {
-      return callback && callback()
-    })
+      return callback && callback();
+    });
   }
 
   this.start = (callback) => {
@@ -360,7 +360,7 @@ module.exports = (() => {
       loadProblems,
       importProblemSet,
       startDailyFetcher,
-    ], callback)
+    ], callback);
   };
 
   return this;

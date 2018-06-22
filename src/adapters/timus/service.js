@@ -49,7 +49,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 exports.fetchProblems = (callback) => {
   client.get(PROBLEMS_PATH, (err, res, html) => {
@@ -70,4 +70,4 @@ exports.fetchProblems = (callback) => {
     });
     return callback(null, problems);
   });
-}
+};

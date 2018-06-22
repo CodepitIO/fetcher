@@ -6,7 +6,7 @@ const path      = require('path'),
       cheerio   = require('cheerio'),
       util      = require('util'),
       fs        = require('fs'),
-      _         = require('lodash')
+      _         = require('lodash');
 
 const Errors        = require('../../../common/errors'),
       RequestClient = require('../../../common/lib/requestClient'),
@@ -88,7 +88,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 function reduceProblems(problems, href, callback) {
   client.get(href, (err, res, html) => {
@@ -140,4 +140,4 @@ function reduceVolumes(problems, volume, callback) {
 
 exports.fetchProblems = (callback) => {
   async.reduce(VOLUMES, [], reduceVolumes, callback);
-}
+};

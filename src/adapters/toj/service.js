@@ -43,7 +43,7 @@ exports.import = (problem, callback) => {
       if (source) {
         data.source = 'Source: ' + source.next().text();
       }
-      data.timelimit = parseFloat(html.match(TIMELIMIT_PATTERN)[1])
+      data.timelimit = parseFloat(html.match(TIMELIMIT_PATTERN)[1]);
       data.memorylimit = Math.round(parseFloat(html.match(
           MEMOLIMIT_PATTERN)[1]) / 1024.) + ' MB';
       data.html = body;
@@ -52,7 +52,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 function processProblems(problemsPath, problems, callback) {
   client.get(problemsPath, (err, res, html) => {
@@ -96,4 +96,4 @@ exports.fetchProblems = (callback) => {
       return callback(null, problems);
     }
   );
-}
+};

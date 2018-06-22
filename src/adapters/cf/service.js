@@ -65,7 +65,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 exports.fetchProblems = (callback) => {
   let problems = [];
@@ -89,4 +89,4 @@ exports.fetchProblems = (callback) => {
       }
     }
   ], callback);
-}
+};

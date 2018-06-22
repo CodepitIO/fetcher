@@ -50,7 +50,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 exports.fetchProblems = (callback) => {
   if (!ACCESS_KEY) {
@@ -79,4 +79,4 @@ exports.fetchProblems = (callback) => {
       }
     }
   ], callback);
-}
+};

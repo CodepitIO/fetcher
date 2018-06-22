@@ -79,7 +79,7 @@ exports.import = (problem, callback) => {
     return callback(null, problem);
   }
   return importHtml(problem, callback);
-}
+};
 
 function getContestProblemsMetadata(contest, callback) {
   let uri = `/group/${contest.group}/contest/${contest.id}`;
@@ -157,7 +157,7 @@ function fetchProblemsFromGroup(problems, groupId, callback) {
         name: _.trim(match[1]),
         id: contestId,
         group: groupId,
-      })
+      });
     });
     async.mapLimit(data, 10, getContestProblemsMetadata, (err, problems) => {
       return callback(err, _.flatten(problems));
@@ -176,4 +176,4 @@ exports.fetchProblems = (callback) => {
     }
     return callback(null, _.flatten(results));
   });
-}
+};

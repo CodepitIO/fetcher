@@ -62,7 +62,7 @@ exports.import = (problem, callback) => {
     }
     return callback(null, data);
   });
-}
+};
 
 function processProblems(problemsPath, problems, callback) {
   client.get(problemsPath, (err, res, html) => {
@@ -101,4 +101,4 @@ exports.fetchProblems = (callback) => {
       return callback(null, problems);
     }
   );
-}
+};
