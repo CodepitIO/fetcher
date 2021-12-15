@@ -20,7 +20,7 @@ const VOLUMES = ["/index.php?option=com_onlinejudge&Itemid=8&category=1",
 const PROBLEM_PATTERN = /^(\d+)\s*-\s*(.*)/i;
 const client = new RequestClient(Config.url);
 
-const PROBLEM_METADATA_API = "http://uhunt.felix-halim.net/api/p/num/%s";
+const PROBLEM_METADATA_API = "https://uhunt.onlinejudge.org/api/p/num/%s";
 
 function getContent(urlPath, data, html, id) {
   if (!_.includes(html, '<body>')) {

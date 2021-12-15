@@ -16,4 +16,9 @@ mongoose.connect(C.CONN.MONGO.GET_URL(), {
   }
 });
 
+// TODO: move keys to constants or ENV
+aws.config.update({
+  accessKeyId: "AKIAZCJDHH3XDR64J7IQ",
+  secretAccessKey: "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"
+});
 exports.S3 = new aws.S3({params: {Bucket: C.CONN.GET_S3_BUCKET()}});

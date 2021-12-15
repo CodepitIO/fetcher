@@ -22,7 +22,7 @@ const VOLUMES = ["/index.php?option=com_onlinejudge&Itemid=8&category=1"];
 const PROBLEM_PATTERN = /^(\d+)\s*-\s*(.*)/i;
 const client = new RequestClient(Config.url);
 
-const PROBLEM_METADATA_API = Config.url + "/uhunt/api/p/num/%s";
+const PROBLEM_METADATA_API = "/index.php?option=com_onlinejudge&Itemid=8&page=show_problem&problem=%s";
 
 function getContent(urlPath, data, html, id) {
   if (!_.includes(html, '<body>')) {
@@ -68,7 +68,7 @@ exports.import = (problem, callback) => {
     let data = {};
     try {
       data.supportedLangs = Config.getSupportedLangs();
-      let tl = results.meta[1] && results.meta[1].rtl || 3000;
+      let tl = (parseFloat(results.meta[1].match(/Time limit: ([\d\.]+) seconds/)[1]) * 1000) || 3000;
       data.timelimit = tl / 1000.0;
       data.memorylimit = '128 MB';
       let html = iconv.decode(results.body[1], 'ISO-8859-1');

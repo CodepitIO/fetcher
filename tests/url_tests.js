@@ -39,7 +39,7 @@ function OjURLsTester(oj) {
 }
 
 
-// toj timus uva la uri spoj spojbr codechef cf
+// toj timus oj la uri spoj spojbr codechef cf
 function test() {
   let tester = new OjURLsTester('poj');
   tester.fetchOjURLs(() => {});

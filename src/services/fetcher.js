@@ -12,11 +12,12 @@ const CronJob = require('cron').CronJob,
       url     = require('url'),
       _       = require('lodash');
 
-const Problem   = require('../../common/models/problem'),
-      Errors    = require('../../common/errors'),
-      Utils     = require('../../common/lib/utils'),
-      C         = require('../../common/constants'),
-      S3        = require('./dbs').S3;
+const Problem       = require('../../common/models/problem'),
+      Errors        = require('../../common/errors'),
+      Utils         = require('../../common/lib/utils'),
+      C             = require('../../common/constants'),
+      RequestClient = require('../../common/lib/requestClient'),
+      S3            = require('./dbs').S3;
 
 const LOAD_AND_IMPORT_INTERVAL = 24 * 60 * 60 * 1000;
 const IMPORT_QUEUE_CONCURRENCY = 50;
@@ -74,7 +75,7 @@ module.exports = (() => {
         }
         ext = '.' + ext;
         if (ext === '.bin') ext = '';
-        return request({url: data.uri, encoding: null}, (err, res, img) => {
+        return request({url: data.uri, encoding: null, rejectUnauthorized: false}, (err, res, img) => {
           if (err) {
             return next(err);
           }
@@ -98,7 +99,7 @@ module.exports = (() => {
         return ojs[problem.oj].importPdf(problem, callback);
       }
       let url = OJConfig.url + OJConfig.getProblemPdfPath(problem.id);
-      request({url: url, encoding: null}, (err, res, body) => {
+      request({url: url, encoding: null, rejectUnauthorized: false}, (err, res, body) => {
         if (err || res.headers['content-length'] < 200 || res.headers['content-type'] !== 'application/pdf') {
           return callback(err || new Error());
         }
@@ -201,7 +202,7 @@ module.exports = (() => {
    * 2. Filter the problems which are currently not listed on allProblems.
    * 3. Add the filtered problems to the database.
    * 4. Reload problems from the database and reset allProblems.
-   * 5. Loop through database problems and imported those who are not yet
+   * 5. Loop through database problems and import those who are not yet
    *    imported.
    */
   function startDailyFetcher(callback) {
@@ -245,6 +246,7 @@ module.exports = (() => {
     ], (err, details) => {
       if (err) {
         if (err !== Errors.NoNeedToImport) {
+          console.log(err);
           return importSaveFail(problem, callback);
         }
         return callback();

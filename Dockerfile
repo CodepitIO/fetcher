@@ -1,17 +1,18 @@
 # Set the base image to Ubuntu
-FROM    ubuntu:14.04
+FROM    ubuntu:20.04
 
 # File Author / Maintainer
-MAINTAINER Gustavo Stor
+LABEL org.opencontainers.image.authors="Gustavo Stor"
 
 # Install Node.js and other dependencies
-RUN apt-get update && \
-    apt-get -y install curl && \
-    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash - && \
-    apt-get -y install nodejs git-all build-essential vim && \
-    apt-get -y install pdftk texlive-extra-utils poppler-utils
+RUN apt-get -y update --fix-missing && apt-get -y upgrade && apt-get -y install curl build-essential vim
+
+RUN curl -fsSL https://deb.nodesource.com/setup_17.x | bash -
+RUN apt-get -y install nodejs
 
 RUN npm install -g grunt-cli nodemon bower node-gyp
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install git-all pdftk texlive-extra-utils poppler-utils
 
 # Define working directory
 RUN mkdir -p /fetcher

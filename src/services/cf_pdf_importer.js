@@ -108,7 +108,6 @@ module.exports = function() {
       (next) => {
         let pdf = `${folder}/p${idx}.pdf`;
         let metadataOffset = getMetadataOffset(pdf);
-        console.log(`${idx}: Metadata offset ${metadataOffset}`);
         exec(`pdfcrop --margins '0 -${metadataOffset} 0 0' ${pdf} ${pdf}`, next);
       },
     ], callback);
@@ -187,7 +186,7 @@ module.exports = function() {
     });
   }
 
-  this.generatePdfs = (url, folderPrefix, callback) => {
+  function generatePdfs(url, folderPrefix, callback) {
     let allPdfFile, numberOfPages, language;
     let folder;
     let problemsIdx = [];
@@ -281,7 +280,7 @@ module.exports = function() {
           else if (parseInt(a.id) === parseInt(b.id)) return 0;
           return 1;
         });
-        this.generatePdfs(problem.originalUrl, '/tmp', next);
+        generatePdfs(problem.originalUrl, '/tmp', next);
       },
       (_folder, language, data, next) => {
         if (data.length !== problems.length) {
