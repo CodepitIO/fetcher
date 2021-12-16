@@ -5,7 +5,8 @@ FROM    ubuntu:20.04
 LABEL org.opencontainers.image.authors="Gustavo Stor"
 
 # Install Node.js and other dependencies
-RUN apt-get -y update --fix-missing && apt-get -y upgrade && apt-get -y install curl build-essential vim
+RUN apt-get -y update && apt-get -y upgrade
+RUN apt-get -y install curl build-essential vim
 
 RUN curl -fsSL https://deb.nodesource.com/setup_17.x | bash -
 RUN apt-get -y install nodejs
