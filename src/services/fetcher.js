@@ -211,7 +211,7 @@ module.exports = (() => {
       cronTime: FETCH_PROBLEMS_CRON,
       onTick: runProblemFetchers,
       timeZone: FETCH_PROBLEMS_TZ,
-      runOnInit: true && (process.env.NODE_ENV === 'development'),
+      runOnInit: true && (process.env.NODE_ENV === 'development' || process.env.NOVE_ENV === 'deployment'),
     });
     job.start();
     return callback && callback();
