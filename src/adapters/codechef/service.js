@@ -1,23 +1,25 @@
-'use strict';
+"use strict";
 
-const cheerio = require('cheerio'),
-      assert  = require('assert'),
-      async   = require('async'),
-      path    = require('path'),
-      util    = require('util'),
-      _       = require('lodash');
+const cheerio = require("cheerio"),
+  assert = require("assert"),
+  async = require("async"),
+  path = require("path"),
+  util = require("util"),
+  _ = require("lodash");
 
-const RequestClient = require('../../../common/lib/requestClient'),
-      Util          = require('../../../common/lib/utils');
+const RequestClient = require("../../../common/lib/requestClient"),
+  Util = require("../../../common/lib/utils");
 
 const TYPE = path.basename(__dirname);
 const Config = Util.getOJConfig(TYPE);
 
-const VOLUMES = ["/problems/school/",
-                 "/problems/easy/",
-                 "/problems/medium/",
-                 "/problems/hard/",
-                 "/problems/extcontest/"];
+const VOLUMES = [
+  "/problems/school/",
+  "/problems/easy/",
+  "/problems/medium/",
+  "/problems/hard/",
+  "/problems/extcontest/",
+];
 
 const PROBLEMS_PATH_UNF = "/api/contests/PRACTICE/problems/%s";
 
@@ -25,11 +27,11 @@ const client = new RequestClient(Config.url);
 
 exports.import = (problem, callback) => {
   let urlPath = util.format(PROBLEMS_PATH_UNF, problem.id);
-  client.get(urlPath, {json: true}, (err, res, meta) => {
+  client.get(urlPath, { json: true }, (err, res, meta) => {
     if (err) return callback(err);
     let data = {};
     try {
-      if (meta.status !== 'success') {
+      if (meta.status !== "success") {
         throw new Error("Problem could not be fetched.");
       }
       let supportedLangs = Config.getSupportedLangs(meta.languages_supported);
@@ -37,23 +39,23 @@ exports.import = (problem, callback) => {
         throw new Error(`Problem ${problem.id} doesn't support any language`);
       }
       data.supportedLangs = supportedLangs;
-      let html = meta.body.replace(/(<)([^a-zA-Z\s\/\\!])/g, '&lt;$2');
+      let html = meta.body.replace(/(<)([^a-zA-Z\s\/\\!])/g, "&lt;$2");
       let $ = cheerio.load(html);
       Util.adjustAnchors($, Config.url + urlPath);
-      $('.solution-visible-txt').remove();
+      $(".solution-visible-txt").remove();
       while (true) {
-        let firstElem = $('*').first();
-        if (!firstElem.is('h3')) {
+        let firstElem = $("*").first();
+        if (!firstElem.is("h3")) {
           break;
         }
         firstElem.remove();
       }
-      let trimmedHtml = _.trim($.html(), '\n');
+      let trimmedHtml = _.trim($.html(), "\n");
       assert(trimmedHtml.length > 0);
       data.html =
         '<div id="codechef" class="problem-statement ttypography">' +
-          trimmedHtml +
-        '</div>';
+        trimmedHtml +
+        "</div>";
       if (meta.problem_author) {
         data.source = `Author: ${meta.problem_author}`;
       }
@@ -70,21 +72,27 @@ exports.import = (problem, callback) => {
 
 function reduceProblems(problems, href, callback) {
   client.get(href, (err, res, html) => {
-    html = html || '';
+    html = html || "";
     let $ = cheerio.load(html);
-    $('tr.problemrow').nextAll().each((i, elem) => {
-      try {
-        let name = _.trim($(elem).find('.problemname').text());
-        let id = _.replace($(elem).find('.problemname a').attr('href'), '/problems/', '');
-        if (name && id) {
-          problems.push({
-            id: id,
-            name: name,
-            oj: TYPE
-          });
-        }
-      } catch (e) {}
-    });
+    let elem = $("tr.problemrow").first().next();
+    let i = 0;
+    while (true) {
+      let name = _.trim($(elem).find(".problemname").text());
+      if (!name) break;
+      let id = _.replace(
+        $(elem).find(".problemname a").attr("href"),
+        "/problems/",
+        ""
+      );
+      if (name && id) {
+        problems.push({
+          id: id,
+          name: name,
+          oj: TYPE,
+        });
+      }
+      elem = elem.next();
+    }
     return callback(null, problems);
   });
 }
