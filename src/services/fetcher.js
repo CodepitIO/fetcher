@@ -301,7 +301,7 @@ module.exports = (() => {
         problem.imported = true;
         problem.url = Utils.getURIFromS3Metadata(details);
         console.log(
-          `${count}: Imported ${problem.id} from ${problem.oj} (${problem._id}). ${problem.url} ${hasImage}`
+          `${count}: Imported ${problem.id} from ${problem.oj}. ${problem.url} ${hasImage}`
         );
         problem.html = undefined;
         return problem.save(callback);
@@ -417,6 +417,18 @@ module.exports = (() => {
   }
 
   this.start = (callback) => {
+    // importOJServices((callback) => {
+    //   importProblem(
+    //     {
+    //       oj: "cfgym",
+    //       id: "103505/A",
+    //       save: function () {
+    //         console.log(this);
+    //       },
+    //     },
+    //     callback
+    //   );
+    // });
     async.waterfall(
       [importOJServices, loadProblems, importProblemSet, startDailyFetcher],
       callback

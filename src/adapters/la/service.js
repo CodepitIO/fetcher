@@ -79,9 +79,9 @@ exports.import = (problem, callback) => {
         data.timelimit = tl / 1000.0;
         data.memorylimit = "128 MB";
         let html = iconv.decode(results.body[1], "ISO-8859-1");
-        data.isPdf =
-          _.includes(html, "pdf-viewer") ||
-          _.includes(html, "main-frame-error");
+        data.isPdf = !!html.match(
+          /<meta\s+http-equiv=\"Refresh\"\s+content=\".*.pdf\">/i
+        );
         if (!data.isPdf) getContent(problemUrl, data, html, problem.id);
       } catch (err) {
         return callback(err);
