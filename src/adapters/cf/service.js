@@ -93,7 +93,7 @@ exports.fetchProblems = (callback) => {
       },
       (res, data, next) => {
         try {
-          data = data.result.problems;
+          data = _.reverse(data.result.problems);
           for (let i = 0; i < data.length; i++) {
             problems.push({
               id: data[i].contestId + data[i].index,

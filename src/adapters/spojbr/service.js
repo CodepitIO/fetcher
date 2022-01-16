@@ -93,6 +93,7 @@ exports.import = (problem, callback) => {
       assert(description.html().length > 0);
       data.html = tmpl({ description: description.html() });
     } catch (err) {
+      console.log(err);
       return callback(err);
     }
     return callback(null, data);

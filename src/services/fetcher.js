@@ -420,8 +420,8 @@ module.exports = (() => {
     // importOJServices((callback) => {
     //   importProblem(
     //     {
-    //       oj: "cfgym",
-    //       id: "103505/A",
+    //       oj: "spojbr",
+    //       id: "ASSALTMG",
     //       save: function () {
     //         console.log(this);
     //       },
@@ -430,7 +430,7 @@ module.exports = (() => {
     //   );
     // });
     async.waterfall(
-      [importOJServices, loadProblems, importProblemSet, startDailyFetcher],
+      [importOJServices, /*loadProblems, importProblemSet,*/ startDailyFetcher],
       callback
     );
   };

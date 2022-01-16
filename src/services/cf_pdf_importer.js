@@ -240,10 +240,7 @@ module.exports = function () {
           fs.writeFile(allPdfFile, body, next);
         },
         (next) => {
-          exec(
-            `pdftk ${allPdfFile} dump_data | grep NumberOfPages | cut -d' ' -f2-`,
-            next
-          );
+          exec(`qpdf --show-npages ${allPdfFile}`, next);
         },
         (stdout, stderr, next) => {
           if (stderr) return next(stderr);
@@ -270,7 +267,7 @@ module.exports = function () {
           if (problemsIdx.length === 0) {
             return next("Cannot import problems :(");
           }
-          exec(`pdftk ${allPdfFile} burst output ${folder}/%d.pdf`, next);
+          exec(`qpdf --split-pages ${allPdfFile} ${folder}/%d.pdf`, next);
         },
         (stdout, stderr, next) => {
           hasFooter = false;
