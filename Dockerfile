@@ -1,6 +1,7 @@
-FROM node:17-alpine
+FROM node:17-slim
 WORKDIR /fetcher
-RUN apk add --no-cache qpdf texlive poppler-utils
+RUN apt-get update -y && apt-get upgrade -y && \
+    apt-get install -y qpdf texlive-extra-utils poppler-utils
 RUN npm install -g nodemon
 ADD . /fetcher
 RUN npm install

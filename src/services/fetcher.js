@@ -420,8 +420,11 @@ module.exports = (() => {
     // importOJServices((callback) => {
     //   importProblem(
     //     {
-    //       oj: "spojbr",
-    //       id: "ASSALTMG",
+    //       oj: "cfgym",
+    //       id: "100008/A",
+    //       isPdf: true,
+    //       originalUrl:
+    //         "http://codeforces.com/gym/100008/attachments/download/2171/20112012-waterloo-local-contest-24-september-2011-en.pdf",
     //       save: function () {
     //         console.log(this);
     //       },

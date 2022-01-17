@@ -31,8 +31,10 @@ module.exports = function () {
         j = 256;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
-        let text = getPDFTextSync(file + ".tmp.pdf");
+        execSync(
+          `pdfcrop --margins '0 -${k} 0 0' ${file} /tmp/${file}.tmp.pdf`
+        );
+        let text = getPDFTextSync(`/tmp/${file}.tmp.pdf`);
         let hasName = getName(_.split(text, "\n").slice(0, 15));
         if (!hasName) {
           j = k - 1;
@@ -43,8 +45,10 @@ module.exports = function () {
       i = 0;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
-        let text = getPDFTextSync(file + ".tmp.pdf");
+        execSync(
+          `pdfcrop --margins '0 -${k} 0 0' ${file} /tmp/${file}.tmp.pdf`
+        );
+        let text = getPDFTextSync(`/tmp/${file}.tmp.pdf`);
         let hasName = getName(_.split(text, "\n").slice(0, 1));
         if (hasName) {
           j = k - 1;
@@ -64,8 +68,10 @@ module.exports = function () {
         j = 256;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
-        let text = getPDFTextSync(file + ".tmp.pdf");
+        execSync(
+          `pdfcrop --margins '0 -${k} 0 0' ${file} /tmp/${file}.tmp.pdf`
+        );
+        let text = getPDFTextSync(`/tmp/${file}.tmp.pdf`);
         let has = hasMetadata(_.split(text, "\n").slice(0, 15));
         if (!has) {
           j = k - 1;

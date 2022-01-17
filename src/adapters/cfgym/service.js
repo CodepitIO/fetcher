@@ -29,7 +29,6 @@ function importHtml(problem, callback) {
       if (html.indexOf(LIMITED_LANG_PATTERN) > -1) {
         throw new Error(`Problem ${problem.id} doesn't support any language`);
       }
-      data.supportedLangs = Config.getSupportedLangs();
       let $ = cheerio.load(html);
       Util.adjustAnchors($, Config.url + urlPath);
       let content = $("div.problemindexholder");
@@ -111,6 +110,7 @@ function getContestProblemsMetadata(contest, callback) {
             timelimit: parseFloat(tlml[1]),
             memorylimit: tlml[2] + " MB",
             source: contest.name,
+            supportedLangs: Config.getSupportedLangs(),
           };
           if (!io.startsWith("standard")) {
             problem.inputFile = _.trim(_.split(io, "/")[0]);
