@@ -31,10 +31,8 @@ module.exports = function () {
         j = 256;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        execSync(
-          `pdfcrop --margins '0 -${k} 0 0' ${file} /tmp/${file}.tmp.pdf`
-        );
-        let text = getPDFTextSync(`/tmp/${file}.tmp.pdf`);
+        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
+        let text = getPDFTextSync(`${file}.tmp.pdf`);
         let hasName = getName(_.split(text, "\n").slice(0, 15));
         if (!hasName) {
           j = k - 1;
@@ -45,10 +43,8 @@ module.exports = function () {
       i = 0;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        execSync(
-          `pdfcrop --margins '0 -${k} 0 0' ${file} /tmp/${file}.tmp.pdf`
-        );
-        let text = getPDFTextSync(`/tmp/${file}.tmp.pdf`);
+        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
+        let text = getPDFTextSync(`${file}.tmp.pdf`);
         let hasName = getName(_.split(text, "\n").slice(0, 1));
         if (hasName) {
           j = k - 1;
@@ -68,10 +64,8 @@ module.exports = function () {
         j = 256;
       while (i < j) {
         let k = Math.ceil((i + j) / 2);
-        execSync(
-          `pdfcrop --margins '0 -${k} 0 0' ${file} /tmp/${file}.tmp.pdf`
-        );
-        let text = getPDFTextSync(`/tmp/${file}.tmp.pdf`);
+        execSync(`pdfcrop --margins '0 -${k} 0 0' ${file} ${file}.tmp.pdf`);
+        let text = getPDFTextSync(`${file}.tmp.pdf`);
         let has = hasMetadata(_.split(text, "\n").slice(0, 15));
         if (!has) {
           j = k - 1;
@@ -246,7 +240,10 @@ module.exports = function () {
           fs.writeFile(allPdfFile, body, next);
         },
         (next) => {
-          exec(`qpdf --show-npages ${allPdfFile}`, next);
+          exec(
+            `pdftk ${allPdfFile} dump_data | grep NumberOfPages | cut -d' ' -f2-`,
+            next
+          );
         },
         (stdout, stderr, next) => {
           if (stderr) return next(stderr);
@@ -273,7 +270,7 @@ module.exports = function () {
           if (problemsIdx.length === 0) {
             return next("Cannot import problems :(");
           }
-          exec(`qpdf --split-pages ${allPdfFile} ${folder}/%d.pdf`, next);
+          exec(`pdftk ${allPdfFile} burst output ${folder}/%d.pdf`, next);
         },
         (stdout, stderr, next) => {
           hasFooter = false;

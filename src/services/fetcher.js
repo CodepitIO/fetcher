@@ -421,10 +421,10 @@ module.exports = (() => {
     //   importProblem(
     //     {
     //       oj: "cfgym",
-    //       id: "100008/A",
+    //       id: "100866/G",
     //       isPdf: true,
     //       originalUrl:
-    //         "http://codeforces.com/gym/100008/attachments/download/2171/20112012-waterloo-local-contest-24-september-2011-en.pdf",
+    //         "https://codeforces.com/gym/100866/attachments/download/3994/20052006-acmicpc-neal-contest-en.pdf..",
     //       save: function () {
     //         console.log(this);
     //       },
