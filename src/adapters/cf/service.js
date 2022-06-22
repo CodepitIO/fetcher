@@ -59,23 +59,19 @@ exports.import = (problem, callback) => {
       content.removeAttr("problemindex");
       content.find(".header").remove();
       data.html = `
-      <div>
-        <script type="text/x-mathjax-config;executed=true">
-          MathJax.Hub.Config({
-          tex2jax: {inlineMath: [['$$$','$$$']], displayMath: [['$$$','$$$']]}
-          });
-          MathJax.Hub.Register.StartupHook("End", function () {
-            Codeforces.runMathJaxListeners();
-          });
-        </script>
-        <script
-          type="text/javascript"
-          async
-          src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML"
-        ></script>
-        ${content.html()}
-      </div>`;
-      require("fs").writeFileSync("test.html", data.html);
+        <div>
+          <script type="text/x-mathjax-config">
+            MathJax.Hub.Config({
+              tex2jax: {inlineMath: [['$$$','$$$']], displayMath: [['$$$$$$','$$$$$$']]}
+            });
+          </script>
+          <script
+            type="text/javascript"
+            async
+            src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML"
+          ></script>
+          ${content.html()}
+        </div>`;
       assert(data.html.length > 0);
     } catch (err) {
       return callback(err);

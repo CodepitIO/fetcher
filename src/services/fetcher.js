@@ -417,23 +417,8 @@ module.exports = (() => {
   }
 
   this.start = (callback) => {
-    // importOJServices((callback) => {
-    //   importProblem(
-    //     {
-    //       oj: "cfgym",
-    //       id: "100866/G",
-    //       isPdf: true,
-    //       originalUrl:
-    //         "https://codeforces.com/gym/100866/attachments/download/3994/20052006-acmicpc-neal-contest-en.pdf..",
-    //       save: function () {
-    //         console.log(this);
-    //       },
-    //     },
-    //     callback
-    //   );
-    // });
     async.waterfall(
-      [importOJServices, /*loadProblems, importProblemSet,*/ startDailyFetcher],
+      [importOJServices, loadProblems, importProblemSet, startDailyFetcher],
       callback
     );
   };

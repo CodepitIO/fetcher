@@ -57,7 +57,20 @@ function importHtml(problem, callback) {
 
       content.removeAttr("problemindex");
       content.find(".header").remove();
-      data.html = content.html();
+      data.html = `
+        <div>
+          <script type="text/x-mathjax-config">
+            MathJax.Hub.Config({
+              tex2jax: {inlineMath: [['$$$','$$$']], displayMath: [['$$$$$$','$$$$$$']]}
+            });
+          </script>
+          <script
+            type="text/javascript"
+            async
+            src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML"
+          ></script>
+          ${content.html()}
+        </div>`;
       data.originalUrl = Config.url + urlPath;
       assert(data.html.length > 0);
     } catch (err) {

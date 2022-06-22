@@ -42,7 +42,6 @@ exports.import = (problem, callback) => {
       if ((match = header.text().match(MEMOLIMIT_PATTERN))) {
         data.memorylimit = Math.round(parseFloat(match[1]) / 1024) + " MB";
       }
-      let body = '<div class="poj-problem problem-statement ttypography">';
       let parent = $("p.pst").parent();
       if (parent.children().slice(-2).html() === "Source") {
         data.source = "Source: " + parent.children().slice(-1).text();
@@ -52,12 +51,10 @@ exports.import = (problem, callback) => {
         parent.children().slice(-2).remove();
       }
       assert(parent.html().length > 0);
-      body += parent.html();
-      body +=
-        "</div>" +
-        "<script>" +
-        '$(function() { MathJax.Hub.Typeset("poj"); });' +
-        "</script>";
+      const body = `
+        <div class="poj-problem ttypography">
+          ${parent.html()}
+        </div>`;
       data.html = body;
     } catch (err) {
       dynamicWait += 5000;
