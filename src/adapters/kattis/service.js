@@ -53,17 +53,17 @@ exports.import = (problem, callback) => {
       assert($(".problembody").html().length > 0);
       const content = $(".problembody").html();
       data.html = `
-        <script type="text/x-mathjax-config">
-          MathJax.Hub.Config({
-            tex2jax: {inlineMath: [['$','$']]}
-          });
-        </script>
-        <script
-          type="text/javascript"
-          async=""
-          src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML"
-        ></script>
-        ${content}
+        <div>
+          <script type="text/javascript">
+            window.MathJax = {
+              tex: {
+                inlineMath: [['$', '$']]
+              }
+            };
+          </script>
+          <script type="text/javascript" async src="//cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+          ${content}
+        </div>
       `;
     } catch (err) {
       return callback(err);

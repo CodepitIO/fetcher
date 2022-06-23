@@ -59,16 +59,15 @@ function importHtml(problem, callback) {
       content.find(".header").remove();
       data.html = `
         <div>
-          <script type="text/x-mathjax-config">
-            MathJax.Hub.Config({
-              tex2jax: {inlineMath: [['$$$','$$$']], displayMath: [['$$$$$$','$$$$$$']]}
-            });
+          <script type="text/javascript">
+            window.MathJax = {
+              tex: {
+                inlineMath: [['$$$', '$$$']],
+                displayMath: [['$$$$$$', '$$$$$$']]
+              }
+            };
           </script>
-          <script
-            type="text/javascript"
-            async
-            src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML"
-          ></script>
+          <script type="text/javascript" async src="//cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
           ${content.html()}
         </div>`;
       data.originalUrl = Config.url + urlPath;
